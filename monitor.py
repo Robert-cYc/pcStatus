@@ -10,6 +10,7 @@ import socket
 import sys
 import threading
 import time
+import webbrowser
 from datetime import datetime
 from typing import Any, Optional
 
@@ -76,8 +77,18 @@ def is_authorized(settings: Settings) -> bool:
     return user_ok and pass_ok
 
 
+import os
+
+def get_base_path() -> str:
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        return sys._MEIPASS
+    return os.path.dirname(os.path.abspath(__file__))
+
 def create_app(settings: Settings, store: MetricsStore, state: MonitorState, logbook: LogBook) -> Flask:
-    app = Flask(__name__)
+    base_path = get_base_path()
+    app = Flask(__name__, 
+                template_folder=os.path.join(base_path, "templates"),
+                static_folder=os.path.join(base_path, "static"))
 
     @app.before_request
     def require_auth() -> Optional[Response]:
@@ -245,8 +256,20 @@ def main() -> None:
         target=monitor_loop, args=(settings, store, state, logbook, notifier, gpu_monitor), daemon=True
     ).start()
 
+    def open_browser() -> None:
+        url_host = "127.0.0.1" if settings.host in ("0.0.0.0", "::") else settings.host
+        url = f"http://{url_host}:{settings.port}"
+        try:
+            webbrowser.open(url)
+            logbook.write(f"已自動開啟瀏覽器: {url}")
+        except Exception as e:
+            logger.warning("Failed to open browser: %s", e)
+
+    threading.Timer(1.5, open_browser).start()
+
     app = create_app(settings, store, state, logbook)
     app.run(host=settings.host, port=settings.port, threaded=True)
+
 
 
 if __name__ == "__main__":
