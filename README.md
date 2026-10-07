@@ -1,114 +1,86 @@
-# my-247-worker
+# 247 系統監控台 (siAgent) 🚀
 
-24/7 系統監控代理 — 監控 CPU / 記憶體 / 硬碟 / 溫度 / 網路，分析異常、發送通知、記錄日誌，並顯示在網頁儀表板。
+![Dashboard Preview](https://img.shields.io/badge/UI-Dark%20Mode-22d3ee?style=for-the-badge)
+![Build Status](https://img.shields.io/github/actions/workflow/status/Robert-cYc/pcStatus/build.yml?style=for-the-badge)
+![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge)
 
-## 功能
+siAgent 是一個輕量、美觀且功能強大的 **24/7 背景系統監控代理**。它會在你電腦的背景靜默運行，並提供一個精美的本地網頁儀表板，讓你隨時掌握機器的健康狀態。
 
-- 📊 每 10 秒收集資源數據，**歷史資料存入 SQLite**（重啟不遺失，預設保留 7 天）
-- 📈 趨勢圖表可切換 **5 分鐘 / 15 分鐘 / 1 小時 / 6 小時 / 24 小時**
-- 🧠 CPU 各核心使用率、💽 **所有磁碟分割區**、🔥 高負載程序 Top 8
-- 🌡️ CPU 溫度偵測（見「溫度感測器」）
-- 🚨 異常檢測，**閥值可在網頁右上角「閥值設定」調整**並自動保存
-- 🔔 異常通知：Telegram / Webhook (Slack、Discord…) / Email，每種異常有冷卻時間避免洗版
-- 🔒 可選的 HTTP Basic 登入；預設只監聽 `127.0.0.1`
-- 📦 Chart.js 已內建於 `static/vendor/`，離線可用
-- 📝 日誌寫入 `agent_log.txt`（超過 5 MB 自動輪替）
+## ✨ 核心特色
 
-## 快速開始
+- **📊 現代化網頁儀表板**: 極致的深色模式 (Dark Mode) UI，內建流暢的即時折線圖 (Chart.js)。
+- **🚀 零依賴單一執行檔**: 支援打包成獨立的 `siAgent.exe`，免裝 Python、隨插即用！
+- **💻 全方位硬體監控**:
+  - **CPU & 記憶體**: 即時負載、單核使用率與高耗能程序排行。
+  - **GPU 監控**: 支援 NVIDIA 顯示卡使用率、VRAM 佔用與溫度追蹤 (需支援 NVML)。
+  - **網路流量**: 精準監控即時的網路發送 (Upload) 與接收 (Download) 速率。
+  - **溫度偵測**: 支援讀取 CPU 與系統溫度 (Windows 環境推薦搭配 LibreHardwareMonitor)。
+  - **磁碟空間**: 各分割區容量追蹤。
+- **🚨 異常警報系統**: 支援自訂閥值，觸發時可透過 Webhook/Telegram 等發送通知。
+- **💾 歷史資料與匯出**: 自動將數據記錄至本地 SQLite，並支援一鍵匯出過去 24 小時的 `.csv` 報表。
 
+---
+
+## 📥 快速啟動 (使用 Executable)
+
+如果您不想安裝任何環境，只需下載編譯好的執行檔：
+
+1. 到本專案的 **[GitHub Actions](https://github.com/Robert-cYc/pcStatus/actions)** 頁面。
+2. 點擊最新的 "Build Windows Executable" 成功紀錄。
+3. 下載 Artifacts 區塊中的 `siAgent-Windows-Executable`。
+4. 解壓縮並雙擊執行 `siAgent.exe`。
+5. 程式會在背景啟動，並自動在瀏覽器開啟儀表板 `http://127.0.0.1:8100`。
+
+> 💡 **自動構建機制**: 每當程式碼推送到 `main` 分支時，GitHub Actions 會自動編譯並產出最新的 `.exe` 供下載！
+
+---
+
+## 🛠️ 開發與手動執行 (Python 環境)
+
+如果你想修改原始碼或手動執行：
+
+### 1. 安裝依賴
 ```bash
+git clone https://github.com/Robert-cYc/pcStatus.git
+cd pcStatus
 pip install -r requirements.txt
-python monitor.py
 ```
 
-開啟瀏覽器 → `http://localhost:5000`
-
-## 設定（環境變數）
-
-| 變數 | 預設 | 說明 |
-|------|------|------|
-| `MONITOR_HOST` | `127.0.0.1` | 設為 `0.0.0.0` 對外開放（**務必同時設定密碼**） |
-| `MONITOR_PORT` | `5000` | 連接埠 |
-| `MONITOR_INTERVAL` | `10` | 取樣間隔（秒） |
-| `MONITOR_USER` / `MONITOR_PASSWORD` | `admin` / 空 | 設定密碼即啟用登入（`/health` 不需登入） |
-| `MONITOR_DB` | `agent_data.db` | SQLite 路徑 |
-| `MONITOR_RETENTION_HOURS` | `168` | 歷史保留時數 |
-| `MONITOR_LOG_FILE` | `agent_log.txt` | 日誌檔 |
-| `MONITOR_THRESHOLD_CPU` / `_MEMORY` / `_DISK` / `_TEMP` | 85 / 85 / 90 / 80 | 初始閥值（網頁修改後以網頁為準） |
-| `LHM_URL` | 空 | LibreHardwareMonitor 溫度來源 |
-
-### 通知管道
-
-| 管道 | 需要的變數 |
-|------|-----------|
-| Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` |
-| Webhook | `NOTIFY_WEBHOOK_URL`（同時送出 `text` 與 `content` 欄位，相容 Slack / Discord） |
-| Email | `SMTP_HOST`, `SMTP_PORT`(587), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TO`（逗號分隔） |
-| 冷卻時間 | `NOTIFY_COOLDOWN_MIN`（預設 30 分鐘） |
-
-> LINE Notify 已於 2025-03 終止服務，請改用 Telegram 或 Webhook。
-> 機密資訊只放環境變數，不要寫入程式碼或提交到 Git。
-
-範例（PowerShell）：
-
-```powershell
-$env:MONITOR_HOST = "0.0.0.0"
-$env:MONITOR_PASSWORD = "請換成強密碼"
-$env:TELEGRAM_BOT_TOKEN = "..."
-$env:TELEGRAM_CHAT_ID = "..."
-python monitor.py
-```
-
-## 溫度感測器
-
-依序嘗試以下來源，皆不可用時儀表板顯示 `N/A`：
-
-1. `psutil.sensors_temperatures()` — Linux / FreeBSD。
-2. **LibreHardwareMonitor** (Windows 建議) — 開啟 Options → Remote Web Server → Run，然後設定 `LHM_URL`：
-   ```powershell
-   $env:LHM_URL = "http://localhost:8085/data.json"
-   ```
-3. Windows ACPI Thermal Zone (WMI) — 多數桌機不支援，部分需系統管理員權限。
-
-## 測試
-
+### 2. 啟動服務
+**Windows 用戶可以直接點擊 `start.bat`**。或者使用指令：
 ```bash
-pip install -r requirements-dev.txt
-pytest
+python monitor.py
 ```
 
-## 專案結構
-
-| 檔案 | 用途 |
-|------|------|
-| `monitor.py` | Flask app 與背景監控迴圈 |
-| `collectors.py` | psutil 採集（核心、磁碟、程序） |
-| `analysis.py` | 異常判斷與顯示格式（純函式） |
-| `temperature.py` | 溫度來源 |
-| `storage.py` / `history.py` | SQLite 與趨勢資料轉換 |
-| `notifier.py` | 通知管道與冷卻 |
-| `config.py` | 環境變數與閥值驗證 |
-| `logbook.py` | 日誌檔與輪替 |
-
-## API 端點
-
-| 路徑 | 說明 |
-|------|------|
-| `/` | 網頁儀表板 |
-| `/api/data?minutes=15` | 即時數據、核心、磁碟、程序、歷史趨勢 |
-| `/api/thresholds` | `GET` 讀取 / `POST` JSON 更新閥值 |
-| `/api/logs` | 最近日誌 |
-| `/health` | 健康檢查（免登入） |
-
-## 注意事項
-
-- 若專案位於 Google Drive 等雲端同步資料夾，SQLite 檔案可能在同步時被鎖定；可用 `MONITOR_DB` 指向本機路徑（如 `C:\data\agent_data.db`）。
-- 內建 Flask 為開發用伺服器；長期對外服務建議搭配反向代理與 HTTPS（Basic 登入在 HTTP 下是明碼傳輸）。
-
-## 日誌格式
-
+### 3. 編譯自己的執行檔
+只需執行：
+```bash
+build.bat
 ```
-2026-10-07 11:21:19  247 worker 監控代理已啟動
-2026-10-07 11:21:20  🚨 異常檢測: 記憶體使用率超過 85% 閥值
-2026-10-07 11:21:31  監控執行: 無異常
+編譯完成後，獨立的 `.exe` 檔案會出現在 `dist/` 資料夾中。
+
+---
+
+## ⚙️ 系統設定與環境變數
+
+你可以複製 `local_env.bat.example` 並更名為 `local_env.bat`，來設定自訂環境變數 (例如綁定 IP、修改 Port、設定密碼與通知頻道)：
+
+```bat
+:: 設定綁定的 IP 與 Port (0.0.0.0 可讓區網其他電腦連線)
+set MONITOR_HOST=0.0.0.0
+set MONITOR_PORT=8100
+
+:: 若開放區網，建議設定密碼保護儀表板
+set MONITOR_USER=admin
+set MONITOR_PASSWORD=your_secure_password
+
+:: 異常通知設定 (例如發送至 Telegram)
+set MONITOR_NOTIFY=tg://bot_token/chat_id
 ```
+
+## 🌡️ 關於溫度偵測 (Windows)
+Windows 預設無法直接透過 Python 取得精準的硬體溫度。我們推薦在背景執行 [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor)，並在選項中開啟 `Web Server` (預設 Port 8085)。siAgent 會自動偵測並讀取其溫度數據！
+
+---
+
+*Designed with ❤️ by Antigravity AI*
