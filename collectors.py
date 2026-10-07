@@ -28,6 +28,8 @@ class Snapshot:
     net_recv: int
     temp_c: Optional[float]
     temp_source: Optional[str]
+    gpu: Optional[dict[str, Any]] = None
+
 
 
 def collect_disks() -> list[dict[str, Any]]:
@@ -73,7 +75,7 @@ def collect_top_processes(limit: int = DEFAULT_PROCESS_LIMIT) -> list[dict[str, 
     return processes[:limit]
 
 
-def collect_snapshot(temp_reader: TemperatureReader) -> Snapshot:
+def collect_snapshot(temp_reader: TemperatureReader, gpu_monitor: Optional[Any] = None) -> Snapshot:
     """Gather one consistent reading (blocks ~1s to measure CPU)."""
     cores = psutil.cpu_percent(interval=1, percpu=True)
     cpu = sum(cores) / len(cores) if cores else 0.0
@@ -92,4 +94,5 @@ def collect_snapshot(temp_reader: TemperatureReader) -> Snapshot:
         net_recv=net.bytes_recv,
         temp_c=temp[0] if temp else None,
         temp_source=temp[1] if temp else None,
+        gpu=gpu_monitor.read() if gpu_monitor else None,
     )

@@ -24,6 +24,7 @@ from logbook import LogBook
 from notifier import Notifier, build_notifier
 from storage import MetricsStore
 from temperature import TemperatureReader
+from gpu import GPUMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,24 @@ def create_app(settings: Settings, store: MetricsStore, state: MonitorState, log
     def api_logs() -> Response:
         return jsonify({"logs": logbook.recent()})
 
+    @app.route("/api/export")
+    def api_export() -> Response:
+        import csv
+        import io
+        days = request.args.get("days", default=1, type=int)
+        rows = store.query(int(time.time()) - days * 86400)
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Timestamp", "CPU(%)", "Memory(%)", "Disk_Max(%)", "Temp(C)", "Net_Sent", "Net_Recv"])
+        for r in rows:
+            dt = datetime.fromtimestamp(r[0]).strftime("%Y-%m-%d %H:%M:%S")
+            writer.writerow([dt, r[1], r[2], r[3], r[4], r[5], r[6]])
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment;filename=export_{int(time.time())}.csv"}
+        )
+
     @app.route("/api/thresholds", methods=["GET", "POST"])
     def api_thresholds() -> Any:
         if request.method == "GET":
@@ -129,6 +148,7 @@ def monitor_loop(
     state: MonitorState,
     logbook: LogBook,
     notifier: Notifier,
+    gpu_monitor: GPUMonitor,
 ) -> None:
     """背景監控循環。"""
     temp_reader = TemperatureReader()
@@ -141,7 +161,7 @@ def monitor_loop(
 
     while True:
         try:
-            snapshot = collect_snapshot(temp_reader)
+            snapshot = collect_snapshot(temp_reader, gpu_monitor)
             thresholds = state.get_thresholds()
 
             sent_bps = recv_bps = 0.0
@@ -164,6 +184,7 @@ def monitor_loop(
                 cores=snapshot.cores,
                 processes=collect_top_processes(),
                 temp_source=snapshot.temp_source,
+                gpu=snapshot.gpu,
             )
 
             if anomalies:
@@ -216,8 +237,12 @@ def main() -> None:
     if notifier.enabled:
         logbook.write("通知管道: " + ", ".join(name for name, _ in notifier.channels))
 
+    gpu_monitor = GPUMonitor()
+    if gpu_monitor.enabled:
+        logbook.write(f"GPU 監控已啟動: {gpu_monitor.name}")
+
     threading.Thread(
-        target=monitor_loop, args=(settings, store, state, logbook, notifier), daemon=True
+        target=monitor_loop, args=(settings, store, state, logbook, notifier, gpu_monitor), daemon=True
     ).start()
 
     app = create_app(settings, store, state, logbook)

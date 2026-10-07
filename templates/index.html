@@ -324,6 +324,10 @@
             <div class="topbar-right">
                 <span class="meta">上次更新 <b class="num" id="last-updated">--:--:--</b></span>
                 <span class="meta">開機時間 <b class="num" id="boot-time">--</b></span>
+                <button class="btn" id="export-btn" type="button" onclick="window.location.href='/api/export?days=1'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    匯出資料
+                </button>
                 <button class="btn" id="open-settings" type="button">
                     <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
                     閥值設定
@@ -605,7 +609,16 @@
                 '<div class="bar"><span style="width:100%;opacity:.35"></span></div></div>';
         }
 
-        function updateSummary(stats, thresholds, tempSource) {
+        function kpiGpu(gpu) {
+            if (!gpu) return "";
+            return '<div class="kpi" style="--kpi-color:#22d3ee">' +
+                '<div class="kpi-head"><span class="kpi-label">' + ICONS.cpu + 'GPU</span><span class="badge ok">' + escapeHtml(gpu.name) + '</span></div>' +
+                '<div class="kpi-value num">' + (gpu.gpu_percent || 0).toFixed(1) + '<small>%</small></div>' +
+                '<div class="kpi-sub">記憶體 ' + gpu.memory_percent.toFixed(1) + '% · ' + (gpu.temp_c ? gpu.temp_c + '°C' : '') + '</div>' +
+                '<div class="bar"><span class="' + barClass(levelFor(gpu.gpu_percent, 85)) + '" style="width:' + Math.min(gpu.gpu_percent || 0, 100) + '%"></span></div></div>';
+        }
+
+        function updateSummary(stats, thresholds, tempSource, gpu) {
             if (!stats || Object.keys(stats).length === 0) return;
             const t = thresholds;
             document.getElementById("summary").innerHTML =
@@ -614,9 +627,11 @@
                     sub: (stats["已用記憶體"] || "-") + " / " + (stats["記憶體總量"] || "-") }) +
                 kpiGauge({ label: "硬碟使用率（最高）", icon: "disk", color: COLORS.disk, value: stats["硬碟使用率"] || "-", threshold: t.disk_percent, sub: "閥值 " + t.disk_percent + "%" }) +
                 kpiTemp(stats, t, tempSource) +
+                kpiGpu(gpu) +
                 kpiNet(stats);
             document.getElementById("boot-time").textContent = stats["開機時間"] || "--";
         }
+
 
         /* ---------- Cores / disks / processes ---------- */
         function updateCores(cores, threshold) {
@@ -785,7 +800,7 @@
                 if (!resp.ok) throw new Error("HTTP " + resp.status);
                 const data = await resp.json();
                 if (data.thresholds) state.thresholds = data.thresholds;
-                updateSummary(data.stats, state.thresholds, data.temp_source);
+                updateSummary(data.stats, state.thresholds, data.temp_source, data.gpu);
                 updateCores(data.cores || [], state.thresholds.cpu_percent);
                 updateDisks(data.disks || [], state.thresholds.disk_percent);
                 updateProcesses(data.processes || []);
