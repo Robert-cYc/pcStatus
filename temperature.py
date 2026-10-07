@@ -113,7 +113,7 @@ class TemperatureReader:
     """Reads CPU temperature, remembering which sources are permanently unavailable."""
 
     def __init__(self, lhm_url: Optional[str] = None) -> None:
-        self.lhm_url = lhm_url if lhm_url is not None else os.environ.get(LHM_URL_ENV, "http://127.0.0.1:8085/data.json")
+        self.lhm_url = lhm_url if lhm_url is not None else os.environ.get(LHM_URL_ENV, "http://localhost:8085/data.json")
         self._psutil_supported = hasattr(psutil, "sensors_temperatures")
         self._acpi_supported = sys.platform == "win32"
 
@@ -164,6 +164,6 @@ class TemperatureReader:
 
         celsius = parse_acpi_output(result.stdout)
         if celsius is None:
-            logger.warning("Windows ACPI thermal zone returned no data (may need admin or unsupported); disabling.")
+            logger.info("Windows ACPI thermal zone returned no data (may need admin or unsupported); disabling.")
             self._acpi_supported = False
         return celsius
