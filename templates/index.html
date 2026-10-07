@@ -395,7 +395,7 @@
             <div class="card-head"><span class="card-title">高負載程序</span><span class="card-hint">依 CPU 使用率排序（佔整機百分比）</span></div>
             <div class="table-wrap">
                 <table class="proc">
-                    <thead><tr><th>程序</th><th>PID</th><th class="r">CPU</th><th class="r">記憶體</th></tr></thead>
+                    <thead><tr><th>程序</th><th>PID</th><th class="r">CPU</th><th class="r">記憶體</th><th class="r">操作</th></tr></thead>
                     <tbody id="proc-list"></tbody>
                 </table>
             </div>
@@ -656,8 +656,25 @@
         function updateProcesses(processes) {
             document.getElementById("proc-list").innerHTML = processes.map(function(p) {
                 return '<tr><td class="proc-name">' + escapeHtml(p.name) + '</td><td class="proc-pid">' + p.pid + '</td>' +
-                    '<td class="r num">' + p.cpu.toFixed(1) + '%</td><td class="r num">' + p.memory.toFixed(1) + '%</td></tr>';
-            }).join("") || '<tr><td colspan="4" class="log-empty">暫無資料</td></tr>';
+                    '<td class="r num">' + p.cpu.toFixed(1) + '%</td><td class="r num">' + p.memory.toFixed(1) + '%</td>' +
+                    '<td class="r"><button style="background:#ef4444;color:white;padding:2px 8px;font-size:12px;border:none;border-radius:4px;cursor:pointer;" onclick="killProcess(' + p.pid + ', \'' + escapeHtml(p.name) + '\')">終止</button></td></tr>';
+            }).join("") || '<tr><td colspan="5" class="log-empty">暫無資料</td></tr>';
+        }
+
+        async function killProcess(pid, name) {
+            if (!confirm("確定要強制終止程序 " + name + " (PID: " + pid + ") 嗎？")) return;
+            try {
+                const resp = await fetch("/api/kill/" + pid, { method: "POST" });
+                const result = await resp.json();
+                if (resp.ok) {
+                    alert(result.message || "已終止");
+                    refresh();
+                } else {
+                    alert("終止失敗: " + result.error);
+                }
+            } catch (e) {
+                alert("連線錯誤: " + e.message);
+            }
         }
 
         /* ---------- Stats / anomalies ---------- */

@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 import webbrowser
+import os
 from datetime import datetime
 from typing import Any, Optional
 
@@ -129,6 +130,22 @@ def create_app(settings: Settings, store: MetricsStore, state: MonitorState, log
             mimetype="text/csv",
             headers={"Content-Disposition": f"attachment;filename=export_{int(time.time())}.csv"}
         )
+
+    @app.route("/api/kill/<int:pid>", methods=["POST"])
+    def api_kill(pid: int) -> Response:
+        try:
+            import psutil
+            p = psutil.Process(pid)
+            name = p.name()
+            p.terminate()
+            logbook.write(f"手動終止程序: {name} (PID: {pid})")
+            return jsonify({"status": "success", "message": f"已終止 {name}"})
+        except psutil.NoSuchProcess:
+            return jsonify({"error": "程序不存在"}), 404
+        except psutil.AccessDenied:
+            return jsonify({"error": "權限不足"}), 403
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/thresholds", methods=["GET", "POST"])
     def api_thresholds() -> Any:
@@ -261,16 +278,44 @@ def main() -> None:
         url = f"http://{url_host}:{settings.port}"
         try:
             webbrowser.open(url)
-            logbook.write(f"已自動開啟瀏覽器: {url}")
+            logbook.write(f"已開啟儀表板: {url}")
         except Exception as e:
             logger.warning("Failed to open browser: %s", e)
 
     threading.Timer(1.5, open_browser).start()
 
     app = create_app(settings, store, state, logbook)
-    app.run(host=settings.host, port=settings.port, threaded=True)
+    
+    flask_thread = threading.Thread(
+        target=lambda: app.run(host=settings.host, port=settings.port, threaded=True, use_reloader=False),
+        daemon=True
+    )
+    flask_thread.start()
 
+    try:
+        import pystray
+        from PIL import Image, ImageDraw
+        def create_tray_icon():
+            image = Image.new('RGB', (64, 64), color=(34, 211, 238))
+            draw = ImageDraw.Draw(image)
+            draw.ellipse((16, 16, 48, 48), fill=(11, 15, 25))
+            return image
 
+        def on_exit(icon, item):
+            icon.stop()
+            os._exit(0)
+
+        icon = pystray.Icon("siAgent", create_tray_icon(), "siAgent 24/7", menu=pystray.Menu(
+            pystray.MenuItem("開啟儀表板", open_browser),
+            pystray.MenuItem("離開", on_exit)
+        ))
+        icon.run()
+    except ImportError:
+        logger.warning("pystray / Pillow not installed, skipping system tray icon.")
+        flask_thread.join()
+    except Exception as e:
+        logger.warning(f"Failed to start system tray: {e}")
+        flask_thread.join()
 
 if __name__ == "__main__":
     main()

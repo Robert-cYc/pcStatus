@@ -13,6 +13,8 @@ C:\Users\rober\AppData\Roaming\Python\Python314\Scripts\pyinstaller.exe --noconf
     --hidden-import "pynvml" ^
     --hidden-import "psutil" ^
     --hidden-import "flask" ^
+    --hidden-import "pystray" ^
+    --hidden-import "PIL._tkinter_finder" ^
     monitor.py
 
 echo [3/3] Build complete!
