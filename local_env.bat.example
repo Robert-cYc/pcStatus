@@ -1,0 +1,19 @@
+rem Copy this file to local_env.bat (git-ignored) and fill in what you need.
+rem Lines starting with "rem" are ignored.
+
+rem --- Access (required if you expose the dashboard to other machines) ---
+rem set MONITOR_HOST=0.0.0.0
+rem set MONITOR_PASSWORD=change-me
+rem set MONITOR_PORT=5000
+
+rem --- Temperature (LibreHardwareMonitor Remote Web Server) ---
+rem set LHM_URL=http://localhost:8085/data.json
+
+rem --- Notifications ---
+rem set TELEGRAM_BOT_TOKEN=
+rem set TELEGRAM_CHAT_ID=
+rem set NOTIFY_WEBHOOK_URL=
+rem set SMTP_HOST=smtp.example.com
+rem set SMTP_USER=
+rem set SMTP_PASSWORD=
+rem set SMTP_TO=you@example.com

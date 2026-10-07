@@ -1,0 +1,6 @@
+﻿agent_data.db
+__pycache__/
+.pytest_cache/
+*.log.1
+agent_log.txt.1
+local_env.bat
