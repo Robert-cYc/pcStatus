@@ -82,6 +82,14 @@ def collect_snapshot(temp_reader: TemperatureReader, gpu_monitor: Optional[Any] 
     memory = psutil.virtual_memory()
     net = psutil.net_io_counters()
     temp = temp_reader.read()
+    gpu_data = gpu_monitor.read() if gpu_monitor else None
+    temp_c = temp[0] if temp else None
+    temp_source = temp[1] if temp else None
+
+    if temp_c is None and gpu_data and gpu_data.get("temp_c"):
+        temp_c = gpu_data["temp_c"]
+        temp_source = gpu_data["name"] + " (GPU Fallback)"
+
     return Snapshot(
         ts=int(time.time()),
         cpu=cpu,
@@ -92,7 +100,7 @@ def collect_snapshot(temp_reader: TemperatureReader, gpu_monitor: Optional[Any] 
         disks=collect_disks(),
         net_sent=net.bytes_sent,
         net_recv=net.bytes_recv,
-        temp_c=temp[0] if temp else None,
-        temp_source=temp[1] if temp else None,
-        gpu=gpu_monitor.read() if gpu_monitor else None,
+        temp_c=temp_c,
+        temp_source=temp_source,
+        gpu=gpu_data,
     )
