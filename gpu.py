@@ -34,14 +34,19 @@ class GPUMonitor:
             util = pynvml.nvmlDeviceGetUtilizationRates(self.handle)
             mem_info = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
             temp = pynvml.nvmlDeviceGetTemperature(self.handle, pynvml.NVML_TEMPERATURE_GPU)
-            
+            try:
+                power = pynvml.nvmlDeviceGetPowerUsage(self.handle) / 1000.0
+            except Exception:
+                power = None
+                
             return {
                 "name": self.name,
                 "gpu_percent": util.gpu,
                 "memory_percent": round((mem_info.used / mem_info.total) * 100, 1) if mem_info.total > 0 else 0,
                 "memory_used_gb": round(mem_info.used / (1024**3), 2),
                 "memory_total_gb": round(mem_info.total / (1024**3), 2),
-                "temp_c": temp
+                "temp_c": temp,
+                "power_w": power
             }
         except Exception as e:
             logger.debug(f"Failed to read GPU stats: {e}")

@@ -51,9 +51,10 @@ def build_history(rows: Sequence[MetricRow], minutes: int, max_points: int = 240
     fmt = label_format(minutes)
     history: dict[str, list] = {
         "timestamps": [], "cpu": [], "memory": [], "disk": [], "temp": [],
-        "net_sent_kbps": [], "net_recv_kbps": [],
+        "net_sent_kbps": [], "net_recv_kbps": [], "gpu_power": [], "sys_power": [],
+        "cpu_mhz": [], "gpu_mhz": [], "cpu_fan_rpm": [], "gpu_fan_rpm": []
     }
-    for (ts, cpu, memory, disk, temp, _sent, _recv), (sent_rate, recv_rate) in combined:
+    for (ts, cpu, memory, disk, temp, _sent, _recv, gpu_pw, sys_pw, cpu_mhz, gpu_mhz, cpu_fan, gpu_fan), (sent_rate, recv_rate) in combined:
         history["timestamps"].append(datetime.fromtimestamp(ts).strftime(fmt))
         history["cpu"].append(round(cpu, 1))
         history["memory"].append(round(memory, 1))
@@ -61,4 +62,10 @@ def build_history(rows: Sequence[MetricRow], minutes: int, max_points: int = 240
         history["temp"].append(round(temp, 1) if temp is not None else None)
         history["net_sent_kbps"].append(round(sent_rate, 1) if sent_rate is not None else None)
         history["net_recv_kbps"].append(round(recv_rate, 1) if recv_rate is not None else None)
+        history["gpu_power"].append(round(gpu_pw, 1) if gpu_pw is not None else None)
+        history["sys_power"].append(round(sys_pw, 1) if sys_pw is not None else None)
+        history["cpu_mhz"].append(round(cpu_mhz, 1) if cpu_mhz is not None else None)
+        history["gpu_mhz"].append(round(gpu_mhz, 1) if gpu_mhz is not None else None)
+        history["cpu_fan_rpm"].append(round(cpu_fan, 1) if cpu_fan is not None else None)
+        history["gpu_fan_rpm"].append(round(gpu_fan, 1) if gpu_fan is not None else None)
     return history

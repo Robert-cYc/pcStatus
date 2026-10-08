@@ -377,6 +377,30 @@
                     <div class="card-head"><span class="card-title">CPU 溫度</span><span class="card-hint">°C</span></div>
                     <div class="chart-wrapper"><canvas id="chart-temp" aria-label="CPU 溫度趨勢圖" role="img"></canvas></div>
                 </div>
+                <div class="card chart-card-wide" id="gpu-power-card" hidden>
+                    <div class="card-head"><span class="card-title">GPU 功耗</span><span class="card-hint">W</span></div>
+                    <div class="chart-wrapper"><canvas id="chart-gpuPower" aria-label="GPU 功耗趨勢圖" role="img"></canvas></div>
+                </div>
+                <div class="card chart-card-wide" id="sys-power-card" hidden>
+                    <div class="card-head"><span class="card-title">系統功耗</span><span class="card-hint">W</span></div>
+                    <div class="chart-wrapper"><canvas id="chart-sysPower" aria-label="系統功耗趨勢圖" role="img"></canvas></div>
+                </div>
+                <div class="card chart-card-wide" id="cpu-mhz-card" hidden>
+                    <div class="card-head"><span class="card-title">CPU 時脈</span><span class="card-hint">MHz</span></div>
+                    <div class="chart-wrapper"><canvas id="chart-cpuMhz" aria-label="CPU 時脈趨勢圖" role="img"></canvas></div>
+                </div>
+                <div class="card chart-card-wide" id="gpu-mhz-card" hidden>
+                    <div class="card-head"><span class="card-title">GPU 時脈</span><span class="card-hint">MHz</span></div>
+                    <div class="chart-wrapper"><canvas id="chart-gpuMhz" aria-label="GPU 時脈趨勢圖" role="img"></canvas></div>
+                </div>
+                <div class="card chart-card-wide" id="cpu-fan-card" hidden>
+                    <div class="card-head"><span class="card-title">CPU 風扇</span><span class="card-hint">RPM</span></div>
+                    <div class="chart-wrapper"><canvas id="chart-cpuFan" aria-label="CPU 風扇趨勢圖" role="img"></canvas></div>
+                </div>
+                <div class="card chart-card-wide" id="gpu-fan-card" hidden>
+                    <div class="card-head"><span class="card-title">GPU 風扇</span><span class="card-hint">RPM</span></div>
+                    <div class="chart-wrapper"><canvas id="chart-gpuFan" aria-label="GPU 風扇趨勢圖" role="img"></canvas></div>
+                </div>
             </div>
         </section>
 
@@ -499,6 +523,12 @@
             netSent: { label: "發送速率 (KB/s)", color: COLORS.netSent, unit: " KB/s", key: "net_sent_kbps" },
             netRecv: { label: "接收速率 (KB/s)", color: COLORS.netRecv, unit: " KB/s", key: "net_recv_kbps" },
             temp: { label: "CPU 溫度 (°C)", color: COLORS.temp, unit: "°C", key: "temp" },
+            gpuPower: { label: "GPU 功耗 (W)", color: "#10b981", unit: "W", key: "gpu_power" },
+            sysPower: { label: "系統功耗 (W)", color: "#f59e0b", unit: "W", key: "sys_power" },
+            cpuMhz: { label: "CPU 時脈 (MHz)", color: "#8b5cf6", unit: "MHz", key: "cpu_mhz" },
+            gpuMhz: { label: "GPU 時脈 (MHz)", color: "#ec4899", unit: "MHz", key: "gpu_mhz" },
+            cpuFan: { label: "CPU 風扇 (RPM)", color: "#06b6d4", unit: "RPM", key: "cpu_fan_rpm" },
+            gpuFan: { label: "GPU 風扇 (RPM)", color: "#14b8a6", unit: "RPM", key: "gpu_fan_rpm" },
         };
 
         function hexToRgba(hex, alpha) {
@@ -562,6 +592,18 @@
         function updateCharts(history) {
             const temps = history.temp || [];
             document.getElementById("temp-card").hidden = !temps.some(function(v) { return v !== null; });
+            const gpuPw = history.gpu_power || [];
+            document.getElementById("gpu-power-card").hidden = !gpuPw.some(function(v) { return v !== null; });
+            const sysPw = history.sys_power || [];
+            document.getElementById("sys-power-card").hidden = !sysPw.some(function(v) { return v !== null; });
+            const cpuM = history.cpu_mhz || [];
+            document.getElementById("cpu-mhz-card").hidden = !cpuM.some(function(v) { return v !== null; });
+            const gpuM = history.gpu_mhz || [];
+            document.getElementById("gpu-mhz-card").hidden = !gpuM.some(function(v) { return v !== null; });
+            const cpuF = history.cpu_fan_rpm || [];
+            document.getElementById("cpu-fan-card").hidden = !cpuF.some(function(v) { return v !== null; });
+            const gpuF = history.gpu_fan_rpm || [];
+            document.getElementById("gpu-fan-card").hidden = !gpuF.some(function(v) { return v !== null; });
             Object.keys(charts).forEach(function(id) {
                 charts[id].data.labels = history.timestamps;
                 charts[id].data.datasets[0].data = history[CHART_DEFS[id].key] || [];

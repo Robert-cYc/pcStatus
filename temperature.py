@@ -167,3 +167,29 @@ class TemperatureReader:
             logger.info("Windows ACPI thermal zone returned no data (may need admin or unsupported); disabling.")
             self._acpi_supported = False
         return celsius
+
+if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).parent))
+    from gpu import GPUMonitor
+
+    logging.basicConfig(level=logging.INFO)
+    
+    # Read CPU Temperature
+    reader = TemperatureReader()
+    result = reader.read()
+    if result:
+        temp, source = result
+        print(f"CPU Temperature: {temp:.1f} °C (Source: {source})")
+    else:
+        print("Could not read CPU temperature from any source.")
+
+    # Read GPU Temperature
+    gpu_monitor = GPUMonitor()
+    gpu_stats = gpu_monitor.read()
+    if gpu_stats and "temp_c" in gpu_stats:
+        print(f"GPU Temperature: {gpu_stats['temp_c']:.1f} °C (GPU: {gpu_stats['name']})")
+    else:
+        print("Could not read GPU temperature.")
+

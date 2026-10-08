@@ -5,7 +5,7 @@ import sqlite3
 import threading
 from typing import Optional
 
-MetricRow = tuple[int, float, float, float, Optional[float], int, int]
+MetricRow = tuple[int, float, float, float, Optional[float], int, int, Optional[float], Optional[float], Optional[float], Optional[float], Optional[float], Optional[float]]
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS metrics (
@@ -15,7 +15,13 @@ CREATE TABLE IF NOT EXISTS metrics (
     disk REAL NOT NULL,
     temp REAL,
     net_sent INTEGER NOT NULL,
-    net_recv INTEGER NOT NULL
+    net_recv INTEGER NOT NULL,
+    gpu_power REAL,
+    sys_power REAL,
+    cpu_mhz REAL,
+    gpu_mhz REAL,
+    cpu_fan_rpm REAL,
+    gpu_fan_rpm REAL
 );
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
@@ -33,15 +39,20 @@ class MetricsStore:
         self._conn = sqlite3.connect(path, check_same_thread=False)
         with self._lock, self._conn:
             self._conn.executescript(_SCHEMA)
+            for col in ["gpu_power", "sys_power", "cpu_mhz", "gpu_mhz", "cpu_fan_rpm", "gpu_fan_rpm"]:
+                try:
+                    self._conn.execute(f"ALTER TABLE metrics ADD COLUMN {col} REAL")
+                except sqlite3.OperationalError:
+                    pass
 
     def insert(self, row: MetricRow) -> None:
         with self._lock, self._conn:
-            self._conn.execute("INSERT OR REPLACE INTO metrics VALUES (?, ?, ?, ?, ?, ?, ?)", row)
+            self._conn.execute("INSERT OR REPLACE INTO metrics VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", row)
 
     def query(self, since_ts: int) -> list[MetricRow]:
         with self._lock:
             cursor = self._conn.execute(
-                "SELECT ts, cpu, memory, disk, temp, net_sent, net_recv FROM metrics WHERE ts >= ? ORDER BY ts",
+                "SELECT ts, cpu, memory, disk, temp, net_sent, net_recv, gpu_power, sys_power, cpu_mhz, gpu_mhz, cpu_fan_rpm, gpu_fan_rpm FROM metrics WHERE ts >= ? ORDER BY ts",
                 (since_ts,),
             )
             return cursor.fetchall()

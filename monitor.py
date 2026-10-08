@@ -27,6 +27,8 @@ from notifier import Notifier, build_notifier
 from storage import MetricsStore
 from temperature import TemperatureReader
 from gpu import GPUMonitor
+from power import SystemPowerReader
+from sensors import LhmSensorReader
 
 logger = logging.getLogger(__name__)
 
@@ -180,10 +182,13 @@ def monitor_loop(
 ) -> None:
     """背景監控循環。"""
     temp_reader = TemperatureReader()
+    power_reader = SystemPowerReader()
+    sensor_reader = LhmSensorReader()
     boot_time = datetime.fromtimestamp(psutil.boot_time()).strftime("%Y-%m-%d %H:%M")
     hostname = socket.gethostname()
     prev: Optional[tuple[int, int, int]] = None  # (ts, bytes_sent, bytes_recv)
     last_prune = 0.0
+    was_anomalous = True
 
     logbook.write("247 worker 監控代理已啟動")
 
@@ -203,8 +208,13 @@ def monitor_loop(
             anomalies = detect_anomalies(snapshot, thresholds)
             disk_max = max((d["percent"] for d in snapshot.disks), default=0.0)
 
+            gpu_power = snapshot.gpu.get("power_w") if snapshot.gpu else None
+            sys_power = power_reader.read()
+            extra = sensor_reader.read()
             store.insert((snapshot.ts, snapshot.cpu, snapshot.memory, disk_max,
-                          snapshot.temp_c, snapshot.net_sent, snapshot.net_recv))
+                          snapshot.temp_c, snapshot.net_sent, snapshot.net_recv, 
+                          gpu_power, sys_power, 
+                          extra["cpu_mhz"], extra["gpu_mhz"], extra["cpu_fan_rpm"], extra["gpu_fan_rpm"]))
             state.update(
                 stats=build_stats(snapshot, thresholds, sent_bps, recv_bps, boot_time),
                 anomalies=anomalies,
@@ -216,11 +226,14 @@ def monitor_loop(
             )
 
             if anomalies:
+                was_anomalous = True
                 for anomaly in anomalies:
                     logbook.write(f"🚨 異常檢測: {anomaly}", level="WARN")
                     notifier.notify(anomaly, f"🚨 247 監控異常 ({hostname})", anomaly)
             else:
-                logbook.write("監控執行: 無異常")
+                if was_anomalous:
+                    logbook.write("監控執行: 無異常")
+                    was_anomalous = False
 
             if time.monotonic() - last_prune > PRUNE_EVERY_SEC:
                 removed = store.prune(int(time.time()) - settings.retention_hours * 3600)
